@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export default function ConnectWallet({ setPublicKey }) {
+export default function ConnectWallet({ setPublicKey, setNotification }) {
   const [walletAddress, setWalletAddress] = useState(null);
 
   useEffect(() => {
@@ -20,11 +20,16 @@ export default function ConnectWallet({ setPublicKey }) {
 
   const connectWallet = async () => {
     if (window.solana && window.solana.isPhantom) {
-      const response = await window.solana.connect();
-      setWalletAddress(response.publicKey.toString());
-      setPublicKey(response.publicKey.toString());
+      try {
+        const response = await window.solana.connect();
+        setWalletAddress(response.publicKey.toString());
+        setPublicKey(response.publicKey.toString());
+        setNotification("Wallet connected successfully!");
+      } catch (error) {
+        setNotification("Failed to connect wallet.");
+      }
     } else {
-      alert("Please install the Phantom Wallet!");
+      setNotification("Please install the Phantom Wallet!");
     }
   };
 
