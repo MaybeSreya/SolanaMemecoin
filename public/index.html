@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solana Memecoin Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.2.47"></script>
+  <style>
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const { createApp, reactive, ref, onMounted, watch } = Vue;
+
+    const ConnectWallet = {
+      props: ['setPublicKey', 'setNotification'],
+      setup(props) {
+        const walletAddress = ref(null);
+
+        const connectWalletOnLoad = async () => {
+          if (window.solana && window.solana.isPhantom) {
+            try {
+              const response = await window.solana.connect({ onlyIfTrusted: true });
+              walletAddress.value = response.publicKey.toString();
+              props.setPublicKey(response.publicKey.toString());
+            } catch (err) {
+              console.log("Connect wallet error:", err);
+            }
+          }
+        };
+
+        const connectWallet = async () => {
+          if (window.solana && window.solana.isPhantom) {
+            try {
+              const response = await window.solana.connect();
+              walletAddress.value = response.publicKey.toString();
+              props.setPublicKey(response.publicKey.toString());
+              props.setNotification("Wallet connected successfully!");
+            } catch (error) {
+              props.setNotification("Failed to connect wallet.");
+            }
+          } else {
+            props.setNotification("Please install the Phantom Wallet!");
+          }
+        };
+
+        onMounted(connectWalletOnLoad);
+
+        return { walletAddress, connectWallet };
+      },
+      template: `
+        <div>
+          <p v-if="walletAddress">Connected: {{ walletAddress }}</p>
+          <button v-else @click="connectWallet">Connect Wallet</button>
+        </div>
+      `,
+    };
+
+    const Notification = {
+      props: ['message', 'setMessage'],
+      watch: {
+        message(newMessage) {
+          if (newMessage) {
+            setTimeout(() => this.setMessage(null), 5000);
+          }
+        },
+      },
+      template: `
+        <div v-if="message" class="notification">
+          {{ message }}
+        </div>
+      `,
+    };
+
+    const CreateTokenForm = {
+      props: ['publicKey', 'setNotification'],
+      setup(props) {
+        const formData = reactive({
+          name: '',
+          symbol: '',
+          decimals: 6,
+          initialSupply: 1000,
+        });
+
+        const handleChange = (e) => {
+          formData[e.target.name] = e.target.value;
+        };
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          if (!props.publicKey) {
+            props.setNotification("Please connect your wallet first!");
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/create-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...formData, ownerPublicKey: props.publicKey }),
+            });
+            const data = await response.json();
+            props.setNotification(`Token created! Mint Address: ${data.mintAddress}`);
+          } catch (error) {
+            props.setNotification('Error creating token');
+          }
+        };
+
+        return { formData, handleChange, handleSubmit };
+      },
+      template: `
+        <form @submit="handleSubmit">
+          <input v-model="formData.name" name="name" placeholder="Token Name" @input="handleChange" />
+          <input v-model="formData.symbol" name="symbol" placeholder="Symbol" @input="handleChange" />
+          <input v-model="formData.decimals" name="decimals" placeholder="Decimals" type="number" @input="handleChange" />
+          <input v-model="formData.initialSupply" name="initialSupply" placeholder="Initial Supply" type="number" @input="handleChange" />
+          <button type="submit">Create Token</button>
+        </form>
+      `,
+    };
+
+    const App = {
+      components: { ConnectWallet, CreateTokenForm, Notification },
+      setup() {
+        const publicKey = ref(null);
+        const notification = ref(null);
+
+        const setPublicKey = (key) => {
+          publicKey.value = key;
+        };
+
+        const setNotification = (msg) => {
+          notification.value = msg;
+        };
+
+        return { publicKey, notification, setPublicKey, setNotification };
+      },
+      template: `
+        <div>
+          <h1>Solana Memecoin Generator</h1>
+          <ConnectWallet :setPublicKey="setPublicKey" :setNotification="setNotification" />
+          <CreateTokenForm :publicKey="publicKey" :setNotification="setNotification" />
+          <Notification :message="notification" :setMessage="setNotification" />
+        </div>
+      `,
+    };
+
+    createApp(App).mount('#app');
+  </script>
+</body>
+</html>
