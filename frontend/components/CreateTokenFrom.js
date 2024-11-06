@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-function CreateTokenForm({ publicKey }) {
+function CreateTokenForm({ publicKey, setNotification }) {
   const [formData, setFormData] = useState({
     name: '',
     symbol: '',
@@ -16,7 +16,7 @@ function CreateTokenForm({ publicKey }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!publicKey) {
-      alert("Please connect your wallet first!");
+      setNotification("Please connect your wallet first!");
       return;
     }
 
@@ -25,9 +25,9 @@ function CreateTokenForm({ publicKey }) {
         ...formData,
         ownerPublicKey: publicKey,
       });
-      alert(`Token created! Mint Address: ${response.data.mintAddress}`);
+      setNotification(`Token created! Mint Address: ${response.data.mintAddress}`);
     } catch (error) {
-      alert('Error creating token');
+      setNotification('Error creating token');
     }
   };
 
